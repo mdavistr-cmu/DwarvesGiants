@@ -1,0 +1,218 @@
+---
+title: "Dwarves & Giants - no audio data pipeline"
+output: html_notebook
+---
+```{r}
+getwd()
+file.exists('/Users/mdavistr/Desktop/dwarves&giants/dg_pipeline/111.csv')
+list.files('dg_pipeline')
+dir.exists('dg-pipeline')
+normalizePath("dg_pipeline")
+```
+
+Loading CSVs
+111111 = Molly's trial run of the prototype
+Creates a practice df
+Creates a trials df
+```{r}
+data = read.csv('/Users/mdavistr/Desktop/dwarves&giants/dg_pipeline/111.csv')
+nrow(data)
+library(tidyverse)
+MollyShortPractice <- data %>% 
+  slice(-(1:6)) %>%
+  slice((1:23)) %>%
+  select(prac_numbers, practicenumbers.started, trials.practicenumbers_resp.keys,trials.practicenumbers_resp.rt)
+head(MollyShortPractice)
+view(MollyShortPractice)
+
+MollyShortTrials <- data %>% 
+  slice(-(1:30)) %>%
+  slice(-n()) %>%
+  select(numbers, monitornumbers.started, trials_2.monitornumbers_resp.keys,trials_2.monitornumbers_resp.rt)
+head(MollyShortTrials)
+view(MollyShortTrials)
+```
+Now to see how well she did overall
+Doing practice first 
+
+```{r}
+library(dplyr)
+library(tidyr)
+
+MollyShortPracticeClean <- MollyShortPractice %>%
+  mutate(
+    trials.practicenumbers_resp.keys = gsub("\\[|\\]|'", "", trials.practicenumbers_resp.keys),  
+    trials.practicenumbers_resp.rt = gsub("\\[|\\]|'", "", trials.practicenumbers_resp.rt),
+    response_keys = strsplit(trials.practicenumbers_resp.keys, ", "),  # Split multiple presses
+    response_rts = strsplit(trials.practicenumbers_resp.rt, ", "),
+    first_rt = sapply(response_rts, function(x) ifelse(length(x) > 0, as.numeric(x[1]), NA)),  # Extract first RT
+    second_rt = sapply(response_rts, function(x) ifelse(length(x) > 1, as.numeric(x[2]), NA)),
+    first_press = sapply(response_keys, function(x) ifelse(length(x) > 0, x[1], NA)),  # Extract first press
+    second_press = sapply(response_keys, function(x) ifelse(length(x) > 1, x[2], NA)), # Extract second press
+    correct = as.numeric(first_press) == prac_numbers,
+    correct2 = as.numeric(second_press) == prac_numbers# Check if first press matches practice number
+  ) %>%
+  select(prac_numbers, practicenumbers.started, first_press, second_press, first_rt, second_rt, correct, correct2, trials.practicenumbers_resp.rt)
+view(MollyShortPracticeClean)
+
+```
+
+```{r}
+MollyShortTrialsClean <- MollyShortTrials %>%
+  mutate(
+    trials_2.monitornumbers_resp.keys = gsub("\\[|\\]|'", "", trials_2.monitornumbers_resp.keys),  
+    trials_2.monitornumbers_resp.rt = gsub("\\[|\\]|'", "",  trials_2.monitornumbers_resp.rt),
+    response_keys = strsplit(trials_2.monitornumbers_resp.keys, ", "),  # Split multiple presses
+    response_rts = strsplit( trials_2.monitornumbers_resp.rt, ", "),
+    first_rt = sapply(response_rts, function(x) ifelse(length(x) > 0, as.numeric(x[1]), NA)),  # Extract first RT
+    second_rt = sapply(response_rts, function(x) ifelse(length(x) > 1, as.numeric(x[2]), NA)),
+    first_press = sapply(response_keys, function(x) ifelse(length(x) > 0, x[1], NA)),  # Extract first press
+    second_press = sapply(response_keys, function(x) ifelse(length(x) > 1, x[2], NA)), # Extract second press
+    correct = as.numeric(first_press) == numbers,
+    correct2 = as.numeric(second_press) == numbers# Check if first press matches practice number
+  ) %>%
+  
+
+  select(numbers, monitornumbers.started, first_press, second_press, first_rt, second_rt, correct, correct2, trials_2.monitornumbers_resp.rt)
+view(MollyShortTrialsClean)
+
+write.csv(MollyShortTrialsClean, "MollyShortTrialsClean.csv", row.names = FALSE)
+```
+Now I'm trying to figure out how long it took Molly to do the task
+Match data press to most recent presentation of that number
+Add RTs
+
+#####
+```{r}
+MollyShortTrialsClean$last_match <- NA
+
+# Track the last match
+last_match_value <- NA
+
+# Variable to store the time it took to press 7 after it was presented in numbers
+MollyShortTrialsClean$time_to_press_7 <- NA
+
+# Track when 7 first appears in 'numbers'
+last_7_time <- NA
+
+
+# Loop through rows and calculate the time to press 7 after it was presented
+for (i in 1:nrow(MollyShortPracticeClean)) {
+  # When '7' is presented in 'numbers', store the time
+  if (MollyShortPracticeClean$numbers[i] == 7 && is.na(last_7_time)) {
+    last_7_time <- MollyShortPracticeClean$monitornumbers_started[i]
+  }
+  
+  # If '7' is pressed in 'first_press' and not NA, calculate the time difference from when it was presented
+  if (!is.na(MollyShortPracticeClean$first_press[i]) && MollyShortPracticeClean$first_press[i] == 7) {
+    # Make sure last_7_time is available to calculate time difference
+    if (!is.na(last_7_time)) {
+      MollyShortPracticeClean$time_to_press_7[i] <- MollyShortPracticeClean$monitornumbers_started[i] - last_7_time
+    }
+  }
+}
+
+
+# View the result
+view(MollyShortTrialsClean)
+```
+
+#######
+```{r}
+MollyShortTrialsClean$MonitorRT <- MollyShortTrialsClean$monitornumbers_started
+MollyShortTrialsClean$MonitorRT[MollyShortTrialsClean$first_press == MollyShortTrialsClean$numbers] <-   MollyShortTrialsClean$monitornumbers_started[MollyShortTrialsClean$first_press == MollyShortTrialsClean$numbers] + MollyShortTrialsClean$first_rt[MollyShortTrialsClean$first_press == MollyShortTrialsClean$numbers]
+view(MollyShortTrialsClean)
+
+
+
+MollyShortTrialsClean$MonitorRT <- ifelse(MollyShortTrialsClean$first_press == MollyShortTrialsClean$numbers,
+                                           MollyShortTrialsClean$monitornumbers_started + MollyShortTrialsClean$first_rt,
+                                           MollyShortTrialsClean$monitornumbers_started)
+```
+
+Manipulated CSV, manually added RTs
+```{r}
+ADDEDRT = read.csv('/Users/mdavistr/Desktop/dwarves&giants/dg_pipeline/MollyShortTrialsCleanADDEDRT.csv')
+#view(ADDEDRT)
+
+ADDEDRT$matches <- as.numeric(ADDEDRT$matches)
+
+filtered_data <- ADDEDRT$matches[!is.na(ADDEDRT$matches)]
+min_value <- min(filtered_data)
+max_value <- max(filtered_data)
+
+# Print the min and max values
+cat("Minimum value:", min_value, "\n")
+cat("Maximum value:", max_value, "\n")
+
+hist(ADDEDRT$matches, breaks = 50, main="Histogram of RT (correct)", xlab="RT(s)", col="lightblue", border="black")
+
+```
+
+```{r}
+#install.packages("dplyr")
+#library(dplyr)
+#ADDEDRT$first_press <- as.numeric(ADDEDRT$first_press)
+#hist(ADDEDRT$first_press, breaks = 9, main="Histogram of Numbers Pressed", xlab="Number Keys", col="lightblue", border="black", plot =FALSE)
+
+monitor_counts <- table(ADDEDRT$first_press)
+
+
+# Print the counts
+print(monitor_counts)
+
+ignore_counts <- table(ADDEDRT$numbers)
+
+# Print the counts
+print(ignore_counts)
+```
+Total number presses = 98
+Errors in presses = 19
+Total opportunities = 125
+79/125
+Percent Correct = .632
+
+Correctly Skipped = 75
+75/75
+79+75/125+75 = .77
+
+
+Need to index and compare to each choice
+update each curr, etc each time I have a new button press to compare to numbers
+```{r}
+#for (i in 1:nrow(ADDEDRT)) {
+#  print(paste("Row:", i, "Value:", ADDEDRT[i, 1]))
+#}
+
+for (i in 1:nrow(ADDEDRT)) {
+  current_value <- ADDEDRT[i, 2]
+  same_row <- (current_value == ADDEDRT[i, 1])
+  prev_row <- (current_value == ADDEDRT[i - 1, 1])
+  two_rows_before <- (current_value == ADDEDRT[i - 2, 1])
+  print(i)
+  print(paste("Row:", i, 
+              "Same row:", same_row, 
+              "Prev row:", prev_row, 
+              "Two rows before:", two_rows_before))
+}
+
+  
+```
+
+mon_number = numbers
+for (mon_number in mon_numbers) {
+  curr = 
+  ult = 
+  pen = 
+  ante = 
+  pre = 
+  
+}
+
+curr = 
+ult = 
+pen = 
+ante = 
+pre = 
+
+
