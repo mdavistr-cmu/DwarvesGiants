@@ -82,41 +82,6 @@ Now I'm trying to figure out how long it took Molly to do the task
 Match data press to most recent presentation of that number
 Add RTs
 
-#####
-```{r}
-MollyShortTrialsClean$last_match <- NA
-
-# Track the last match
-last_match_value <- NA
-
-# Variable to store the time it took to press 7 after it was presented in numbers
-MollyShortTrialsClean$time_to_press_7 <- NA
-
-# Track when 7 first appears in 'numbers'
-last_7_time <- NA
-
-
-# Loop through rows and calculate the time to press 7 after it was presented
-for (i in 1:nrow(MollyShortPracticeClean)) {
-  # When '7' is presented in 'numbers', store the time
-  if (MollyShortPracticeClean$numbers[i] == 7 && is.na(last_7_time)) {
-    last_7_time <- MollyShortPracticeClean$monitornumbers_started[i]
-  }
-  
-  # If '7' is pressed in 'first_press' and not NA, calculate the time difference from when it was presented
-  if (!is.na(MollyShortPracticeClean$first_press[i]) && MollyShortPracticeClean$first_press[i] == 7) {
-    # Make sure last_7_time is available to calculate time difference
-    if (!is.na(last_7_time)) {
-      MollyShortPracticeClean$time_to_press_7[i] <- MollyShortPracticeClean$monitornumbers_started[i] - last_7_time
-    }
-  }
-}
-
-
-# View the result
-view(MollyShortTrialsClean)
-```
-
 #######
 ```{r}
 MollyShortTrialsClean$MonitorRT <- MollyShortTrialsClean$monitornumbers_started
