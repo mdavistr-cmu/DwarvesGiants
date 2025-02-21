@@ -149,35 +149,27 @@ update each curr, etc each time I have a new button press to compare to numbers
 #  print(paste("Row:", i, "Value:", ADDEDRT[i, 1]))
 #}
 
-for (i in 1:nrow(ADDEDRT)) {
-  current_value <- ADDEDRT[i, 2]
+ADDEDRT$TotalRT <- rep(NA, nrow(ADDEDRT))
+
+for (i in 3:nrow(ADDEDRT)) {
+  current_value <- ADDEDRT[i, 3]
+  current_numStart <- ADDEDRT[i, 2]
+  current_rt <- ADDEDRT[i,5]
   same_row <- (current_value == ADDEDRT[i, 1])
   prev_row <- (current_value == ADDEDRT[i - 1, 1])
   two_rows_before <- (current_value == ADDEDRT[i - 2, 1])
-  print(i)
-  print(paste("Row:", i, 
-              "Same row:", same_row, 
-              "Prev row:", prev_row, 
-              "Two rows before:", two_rows_before))
-}
-
   
+  if (current_value == as.numeric(ADDEDRT[i, 1])) {
+    ADDEDRT$TotalRT[i] <- current_rt
+  } 
+  if (current_value == as.numeric(ADDEDRT[i - 1, 1])) {
+    matched_stim_time <- as.numeric(ADDEDRT[i - 1, 2])  # Previous row
+    ADDEDRT$TotalRT[i] <- (current_numStart - matched_stim_time) + current_rt
+  } 
+  if (current_value == as.numeric(ADDEDRT[i - 2, 1])) {
+    matched_stim_time <- as.numeric(ADDEDRT[i - 2, 2])  # Two rows before
+    ADDEDRT$TotalRT[i] <- (current_numStart - matched_stim_time) + current_rt
+  }
+}
 ```
-
-mon_number = numbers
-for (mon_number in mon_numbers) {
-  curr = 
-  ult = 
-  pen = 
-  ante = 
-  pre = 
-  
-}
-
-curr = 
-ult = 
-pen = 
-ante = 
-pre = 
-
 
